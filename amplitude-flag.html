@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amplitude Experiment · Targeting Playground</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:     #0d0d0f;
+  --surf:   #16161a;
+  --surf2:  #1e1e24;
+  --border: rgba(255,255,255,0.08);
+  --text:   #f0eff4;
+  --muted:  #6e6e80;
+  --track:  #2a2a36;
+  --blue:   #4da6ff;
+  --teal:   #3ecf8e;
+  --pink:   #ff6b9d;
+  --amber:  #ffb347;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  background: var(--surf);
+  border-bottom: 1px solid var(--border);
+}
+.badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(77,166,255,.15);
+  color: var(--blue);
+  border: 1px solid rgba(77,166,255,.25);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+header h1 { font-size: 14px; font-weight: 500; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  min-height: calc(100vh - 49px);
+}
+
+/* ── sidebar ── */
+.sidebar {
+  background: var(--surf);
+  border-right: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.seg-card {
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.seg-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 20px;
+  width: fit-content;
+  margin-bottom: 4px;
+}
+.pill-blue { background: rgba(77,166,255,.12); color: var(--blue); border: 1px solid rgba(77,166,255,.2); }
+.pill-pink { background: rgba(255,107,157,.12); color: var(--pink); border: 1px solid rgba(255,107,157,.2); }
+
+.seg-meta { font-size: 11px; color: var(--muted); }
+
+.section-lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+}
+
+.row-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+.row-label .lname {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.row-label .lval {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  background: var(--track);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 2px solid var(--surf2);
+  cursor: pointer;
+}
+
+.divider { border: none; border-top: 1px solid var(--border); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid transparent;
+}
+
+.footnote { font-size: 11px; color: var(--muted); line-height: 1.7; }
+
+/* ── canvas ── */
+.canvas {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.metric {
+  background: var(--surf2);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.metric-val { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 500; }
+.metric-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+.bar-row {
+  display: flex;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 4px;
+}
+.bar-outer {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  background: var(--surf2);
+}
+.bar-inner { display: flex; height: 100%; min-width: 0; }
+.bar-gap { width: 3px; background: var(--bg); flex-shrink: 0; }
+.bseg { height: 100%; min-width: 0; transition: flex .25s; }
+
+/* dot area */
+.grids-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.grid-col-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+}
+
+.dot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.udot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transition: background .25s;
+  flex-shrink: 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.legend-payload { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text); }
+.legend-count   { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); }
+
+@media (max-width: 700px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .metrics { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">Amplitude</span>
+  <h1>Experiment Targeting Playground</h1>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="seg-card">
+      <div>
+        <div class="seg-pill pill-blue">
+          <span class="dot" style="background:var(--blue)"></span>Segment 1
+        </div>
+        <div class="seg-meta">Country = Singapore, Hong Kong &nbsp;·&nbsp; ~20.6k users</div>
+      </div>
+
+      <div class="section-lbl">Rollout — % of 20.6k enrolled</div>
+      <div>
+        <div class="row-label">
+          <span class="lname">Users enrolled in experiment</span>
+          <span class="lval" id="s1e-v">100%</span>
+        </div>
+        <input type="range" id="s1-enroll" min="0" max="100" step="1" value="100">
+      </div>
+
+      <hr class="divider">
+      <div class="section-lbl">Variant split (enrolled only · sums to 100%)</div>
+
+      <div>
+        <div class="row-label">
+          <span class="lname"><span class="dot" style="background:var(--blue)"></span>Latest version (A)</span>
+          <span class="lval" id="s1a-v">100%</span>
+        </div>
+        <input type="range" id="s1-a" min="0" max="100" step="1" value="100">
+      </div>
+      <div>
+        <div class="row-label">
+          <span class="lname"><span class="dot" style="background:var(--teal)"></span>Previous version (B)</span>
+          <span class="lval" id="s1b-v">0%</span>
+        </div>
+        <input type="range" id="s1-b" min="0" max="100" step="1" value="0">
+      </div>
+
+      <div class="chips">
+        <span class="chip" style="background:rgba(77,166,255,.1);color:var(--blue);border-color:rgba(77,166,255,.2)">
+          <span class="dot" style="background:var(--blue)"></span>{ version: 0.3 }
+        </span>
+        <span class="chip" style="background:rgba(62,207,142,.1);color:var(--teal);border-color:rgba(62,207,142,.2)">
+          <span class="dot" style="background:var(--teal)"></span>{ version: 0.2 }
+        </span>
+      </div>
+    </div>
+
+    <div class="seg-card">
+      <div>
+        <div class="seg-pill pill-pink">
+          <span class="dot" style="background:var(--pink)"></span>All other users
+        </div>
+        <div class="seg-meta">Everyone outside Segment 1 &nbsp;·&nbsp; ~4.32M users</div>
+      </div>
+
+      <div class="section-lbl">Rollout — % of 4.32M enrolled</div>
+      <div>
+        <div class="row-label">
+          <span class="lname">Users enrolled in experiment</span>
+          <span class="lval" id="ote-v">100%</span>
+        </div>
+        <input type="range" id="ot-enroll" min="0" max="100" step="1" value="100">
+      </div>
+
+      <hr class="divider">
+      <div class="section-lbl">Variant split (enrolled only · sums to 100%)</div>
+
+      <div>
+        <div class="row-label">
+          <span class="lname"><span class="dot" style="background:var(--pink)"></span>Latest version (A)</span>
+          <span class="lval" id="ota-v">0%</span>
+        </div>
+        <input type="range" id="ot-a" min="0" max="100" step="1" value="0">
+      </div>
+      <div>
+        <div class="row-label">
+          <span class="lname"><span class="dot" style="background:var(--amber)"></span>Previous version (B)</span>
+          <span class="lval" id="otb-v">100%</span>
+        </div>
+        <input type="range" id="ot-b" min="0" max="100" step="1" value="100">
+      </div>
+
+      <div class="chips">
+        <span class="chip" style="background:rgba(255,107,157,.1);color:var(--pink);border-color:rgba(255,107,157,.2)">
+          <span class="dot" style="background:var(--pink)"></span>{ version: 0.3 }
+        </span>
+        <span class="chip" style="background:rgba(255,179,71,.1);color:var(--amber);border-color:rgba(255,179,71,.2)">
+          <span class="dot" style="background:var(--amber)"></span>{ version: 0.2 }
+        </span>
+      </div>
+    </div>
+
+    <p class="footnote">
+      Each segment is an independent bucket. The rollout % controls how many users <em>within that bucket</em> receive a payload. Unenrolled users always get <code style="font-family:'IBM Plex Mono',monospace;color:var(--text)">{}</code>.
+    </p>
+  </aside>
+
+  <main class="canvas">
+    <div class="card">
+      <div class="metrics" id="metrics"></div>
+      
+      <div class="bar-row">
+        <span style="flex:50;text-align:center">Segment 1</span>
+        <span style="width:3px;flex-shrink:0"></span>
+        <span style="flex:450;text-align:center">All other users</span>
+      </div>
+      <div class="bar-outer" id="bar"></div>
+      
+      <div class="grids-area" id="grids-area"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+const SEG1_N  = 50;
+const OTHER_N = 450;
+
+const DEF = {
+  s1_a: { hex:'#4da6ff', label:'Seg 1 · Latest A',     payload:'{ version: 0.3 }' },
+  s1_b: { hex:'#3ecf8e', label:'Seg 1 · Previous B',   payload:'{ version: 0.2 }' },
+  s1_0: { hex:'#25253a', label:'Seg 1 · Not enrolled', payload:'{}'               },
+  ot_a: { hex:'#ff6b9d', label:'Others · Latest A',    payload:'{ version: 0.3 }' },
+  ot_b: { hex:'#ffb347', label:'Others · Previous B',  payload:'{ version: 0.2 }' },
+  ot_0: { hex:'#1c1c2a', label:'Others · Not enrolled',payload:'{}'               },
+};
+
+function getV() {
+  return {
+    s1e: +document.getElementById('s1-enroll').value,
+    s1a: +document.getElementById('s1-a').value,
+    s1b: +document.getElementById('s1-b').value,
+    ote: +document.getElementById('ot-enroll').value,
+    ota: +document.getElementById('ot-a').value,
+    otb: +document.getElementById('ot-b').value,
+  };
+}
+
+function calc(v) {
+  const s1en = Math.round(SEG1_N  * v.s1e / 100);
+  const s1a  = Math.round(s1en * v.s1a / 100);
+  const s1b  = Math.round(s1en * v.s1b / 100);
+  const s10  = SEG1_N - s1a - s1b;
+
+  const oten = Math.round(OTHER_N * v.ote / 100);
+  const ota  = Math.round(oten * v.ota / 100);
+  const otb  = Math.round(oten * v.otb / 100);
+  const ot0  = OTHER_N - ota - otb;
+
+  return { s1a, s1b, s10, ota, otb, ot0 };
+}
+
+function render() {
+  const v = getV();
+  const c = calc(v);
+
+  document.getElementById('s1e-v').textContent = v.s1e + '%';
+  document.getElementById('s1a-v').textContent = v.s1a + '%';
+  document.getElementById('s1b-v').textContent = v.s1b + '%';
+  document.getElementById('ote-v').textContent = v.ote + '%';
+  document.getElementById('ota-v').textContent = v.ota + '%';
+  document.getElementById('otb-v').textContent = v.otb + '%';
+
+  // metrics
+  const enrolled = c.s1a + c.s1b + c.ota + c.otb;
+  const noPayload = c.s10 + c.ot0;
+  document.getElementById('metrics').innerHTML = [
+    { lbl:'Seg 1 enrolled',   val: v.s1e + '%' },
+    { lbl:'Others enrolled',  val: v.ote + '%' },
+    { lbl:'Receive payload',  val: Math.round(enrolled  / (SEG1_N + OTHER_N) * 100) + '%' },
+    { lbl:'Receive {}',       val: Math.round(noPayload / (SEG1_N + OTHER_N) * 100) + '%' },
+  ].map(m => `<div class="metric"><div class="metric-val">${m.val}</div><div class="metric-lbl">${m.lbl}</div></div>`).join('');
+
+  // bar
+  const s1parts = [{k:'s1_a',n:c.s1a},{k:'s1_b',n:c.s1b},{k:'s1_0',n:c.s10}].filter(x=>x.n>0);
+  const otparts = [{k:'ot_a',n:c.ota},{k:'ot_b',n:c.otb},{k:'ot_0',n:c.ot0}].filter(x=>x.n>0);
+  document.getElementById('bar').innerHTML = `
+    <div class="bar-inner" style="flex:${SEG1_N}">
+      ${s1parts.map(x=>`<div class="bseg" style="flex:${x.n};background:${DEF[x.k].hex}"></div>`).join('')}
+    </div>
+    <div class="bar-gap"></div>
+    <div class="bar-inner" style="flex:${OTHER_N}">
+      ${otparts.map(x=>`<div class="bseg" style="flex:${x.n};background:${DEF[x.k].hex}"></div>`).join('')}
+    </div>`;
+
+  // dot grids (Replaced with a single population grid and fixed the key bug)
+  const area = document.getElementById('grids-area');
+  area.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'grid-col-title';
+  title.textContent = `Whole Population (${SEG1_N + OTHER_N} users)`;
+  area.appendChild(title);
+
+  const grid = document.createElement('div');
+  grid.className = 'dot-grid';
+
+  // Map the calculated totals back to our definitions object keys
+  const userCounts = {
+    's1_a': c.s1a, 's1_b': c.s1b, 's1_0': c.s10,
+    'ot_a': c.ota, 'ot_b': c.otb, 'ot_0': c.ot0
+  };
+
+  ['s1_a','s1_b','s1_0', 'ot_a','ot_b','ot_0'].forEach(k => {
+    for (let i = 0; i < userCounts[k]; i++) {
+      const d = document.createElement('div');
+      d.className = 'udot';
+      d.style.background = DEF[k].hex;
+      d.title = DEF[k].label; // Adds a small native tooltip on hover
+      grid.appendChild(d);
+    }
+  });
+
+  area.appendChild(grid);
+
+  // legend
+  const entries = [
+    ['s1_a', c.s1a], ['s1_b', c.s1b], ['s1_0', c.s10],
+    ['ot_a', c.ota], ['ot_b', c.otb], ['ot_0', c.ot0],
+  ].filter(([,n]) => n > 0);
+
+  document.getElementById('legend').innerHTML = entries.map(([key, n]) => `
+    <div class="legend-item">
+      <span class="dot" style="background:${DEF[key].hex}"></span>
+      <span>${DEF[key].label}</span>
+      <span class="legend-payload">${DEF[key].payload}</span>
+      <span class="legend-count">(${n})</span>
+    </div>`).join('');
+}
+
+function linkAB(aId, bId) {
+  const a = document.getElementById(aId);
+  const b = document.getElementById(bId);
+  a.addEventListener('input', () => { b.value = 100 - +a.value; render(); });
+  b.addEventListener('input', () => { a.value = 100 - +b.value; render(); });
+}
+
+linkAB('s1-a', 's1-b');
+linkAB('ot-a', 'ot-b');
+document.getElementById('s1-enroll').addEventListener('input', render);
+document.getElementById('ot-enroll').addEventListener('input', render);
+
+render();
+</script>
+</body>
+</html>
