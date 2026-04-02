@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Music Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg:#0e0e0e; --bg2:#181818; --border:rgba(255,255,255,0.08);
+  --text:#f2f2f2; --text2:rgba(242,242,242,0.45); --text3:rgba(242,242,242,0.22);
+  /* three brand accents */
+  --cyan:#00C6D1;
+  --pink:#F443C2;
+  --purple:#B400FF;
+  /* semantic roles */
+  --accent:var(--cyan);          /* primary CTA, progress, correct */
+  --accent2:var(--pink);         /* highlights, score, selected */
+  --accent3:var(--purple);       /* leaderboard top ranks, audio */
+  --danger:#FF3B3B;
+}
+html,body { height:100%; background:#080808; display:flex; align-items:center; justify-content:center; font-family:'Plus Jakarta Sans',sans-serif; overflow:hidden; }
+.shell { width:390px; height:844px; background:var(--bg); border-radius:44px; overflow:hidden; position:relative; border:1px solid rgba(255,255,255,0.06); }
+.screen { position:absolute; inset:0; display:flex; flex-direction:column; transition:transform 0.32s cubic-bezier(0.4,0,0.2,1),opacity 0.32s; }
+.screen.hidden { transform:translateX(100%); opacity:0; pointer-events:none; }
+.screen.exit   { transform:translateX(-100%); opacity:0; pointer-events:none; }
+.sb { display:flex; justify-content:space-between; align-items:center; padding:16px 28px 0; font-size:12px; color:var(--text3); font-family:'IBM Plex Mono',monospace; flex-shrink:0; }
+.btn { border-radius:10px; padding:16px 20px; font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:500; cursor:pointer; user-select:none; text-align:center; letter-spacing:0.04em; transition:opacity 0.15s,transform 0.1s; }
+.btn:active { transform:scale(0.97); opacity:0.85; }
+.btn-accent { background:var(--cyan); color:#000; font-weight:600; }
+.btn-ghost  { background:transparent; color:var(--text2); border:1px solid var(--border); }
+.btn-row    { display:flex; gap:10px; }
+.divider    { height:1px; background:var(--border); margin:24px 0; }
+.back { width:32px; height:32px; border-radius:8px; background:var(--bg2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s; flex-shrink:0; }
+.back:active { background:rgba(255,255,255,0.1); }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation:fadeUp 0.22s ease forwards; }
+
+/* ── HOME ── */
+#home { background:var(--bg); }
+.home-inner { flex:1; display:flex; flex-direction:column; justify-content:flex-end; padding:0 28px 36px; }
+.home-eyebrow { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:16px; }
+.home-title { font-size:38px; font-weight:300; color:var(--text); line-height:1.1; margin-bottom:10px; letter-spacing:-0.02em; }
+.home-title strong { font-weight:600; background:linear-gradient(90deg,var(--cyan),var(--pink)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.home-meta { font-size:13px; color:var(--text2); line-height:1.7; margin-bottom:36px; }
+.home-meta span { color:var(--text); }
+.home-btns { display:flex; flex-direction:column; gap:10px; }
+
+/* ── CATEGORY PICKER ── */
+#catpick { background:var(--bg); overflow-y:auto; }
+.catpick-inner { padding:0 28px 44px; }
+.catpick-header { display:flex; align-items:center; gap:16px; padding:10px 0 32px; flex-shrink:0; }
+.catpick-title { font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--text3); letter-spacing:0.1em; text-transform:uppercase; }
+.catpick-heading { font-size:26px; font-weight:300; color:var(--text); letter-spacing:-0.01em; margin-bottom:8px; }
+.catpick-sub { font-size:13px; color:var(--text2); margin-bottom:28px; line-height:1.6; }
+.cat-cards { display:flex; flex-direction:column; gap:10px; }
+.cat-card {
+  padding:20px; border-radius:12px; border:1px solid var(--border);
+  background:var(--bg2); cursor:pointer; user-select:none;
+  transition:border-color 0.15s,background 0.15s,transform 0.1s;
+}
+.cat-card:active { transform:scale(0.98); }
+.cat-card.selected { border-color:var(--cyan); background:rgba(0,198,209,0.05); }
+.cat-card-name { font-size:16px; font-weight:500; color:var(--text); margin-bottom:4px; }
+.cat-card.selected .cat-card-name { color:var(--cyan); }
+.cat-card-desc { font-size:12px; color:var(--text3); line-height:1.5; }
+.cat-card-count { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text3); margin-top:8px; }
+.cat-card.selected .cat-card-count { color:rgba(0,198,209,0.5); }
+.catpick-cta { margin-top:28px; }
+
+/* ── QUIZ ── */
+#quiz { background:var(--bg); overflow-y:auto; }
+.quiz-header { padding:10px 24px 16px; flex-shrink:0; }
+.quiz-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.score { font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text2); }
+.prog-track { height:2px; background:rgba(255,255,255,0.07); border-radius:2px; overflow:hidden; margin-bottom:8px; }
+.prog-fill  { height:100%; background:var(--cyan); border-radius:2px; transition:width 0.4s ease; }
+.prog-meta  { display:flex; justify-content:space-between; margin-bottom:16px; }
+.prog-label { font-size:11px; color:var(--text3); font-family:'IBM Plex Mono',monospace; letter-spacing:0.05em; }
+.timer-row  { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+.timer-track{ flex:1; height:2px; background:rgba(255,255,255,0.07); border-radius:2px; overflow:hidden; }
+.timer-bar  { height:100%; border-radius:2px; transition:width 0.1s linear,background 0.4s; }
+.timer-val  { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3); min-width:24px; text-align:right; }
+.quiz-body  { padding:0 24px 32px; }
+.q-text     { font-size:20px; font-weight:400; color:var(--text); line-height:1.45; margin-bottom:24px; letter-spacing:-0.01em; }
+.audio-block{ display:flex; align-items:center; gap:14px; margin-top:14px; margin-bottom:4px; }
+.play-btn   { width:34px; height:34px; border-radius:50%; background:rgba(180,0,255,0.12); border:1px solid rgba(180,0,255,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:border-color 0.15s,background 0.15s; }
+.play-btn:active { background:rgba(180,0,255,0.25); border-color:var(--purple); }
+.waveform   { display:flex; align-items:center; gap:2px; height:22px; flex:1; }
+.wbar { border-radius:1px; transition:background 0.2s; }
+.wbar.played   { background:var(--purple); }
+.wbar.unplayed { background:rgba(255,255,255,0.1); }
+.audio-meta { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text3); margin-bottom:2px; }
+.replay     { font-family:'IBM Plex Mono',monospace; font-size:10px; color:rgba(180,0,255,0.7); cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
+.options    { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.opt        { display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; user-select:none; transition:border-color 0.15s,background 0.15s,opacity 0.15s; }
+.opt:active:not(.answered) { background:rgba(255,255,255,0.06); }
+.opt.correct-sel { border-color:var(--cyan); background:rgba(0,198,209,0.07); }
+.opt.correct-rev { border-color:rgba(0,198,209,0.3); background:rgba(0,198,209,0.03); }
+.opt.wrong-sel   { border-color:var(--danger); background:rgba(255,59,59,0.08); }
+.opt.dimmed      { opacity:0.25; pointer-events:none; }
+.opt-key    { width:26px; height:26px; border-radius:6px; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3); flex-shrink:0; }
+.opt.correct-sel .opt-key,.opt.correct-rev .opt-key { background:rgba(0,198,209,0.15); color:var(--cyan); }
+.opt.wrong-sel .opt-key { background:rgba(255,59,59,0.18); color:#ff8080; }
+.opt-text   { flex:1; font-size:14px; color:var(--text); line-height:1.4; }
+.opt.correct-sel .opt-text,.opt.correct-rev .opt-text { color:var(--cyan); }
+.opt.wrong-sel .opt-text { color:#ff8080; }
+.opt-icon   { font-size:12px; flex-shrink:0; }
+.feedback   { border-radius:10px; padding:14px 16px; margin-bottom:14px; border:1px solid; }
+.fb-correct { border-color:rgba(0,198,209,0.2); background:rgba(0,198,209,0.05); }
+.fb-wrong   { border-color:rgba(255,59,59,0.2); background:rgba(255,59,59,0.04); }
+.fb-title   { font-size:13px; font-weight:600; margin-bottom:5px; }
+.fb-title-c { color:var(--cyan); }
+.fb-title-w { color:#ff8080; }
+.fb-body    { font-size:12px; color:var(--text2); line-height:1.6; }
+.fb-reveal  { margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06); font-size:12px; color:var(--text2); }
+.fb-reveal strong { color:var(--cyan); font-weight:600; }
+
+/* ── RESULTS ── */
+#results { background:var(--bg); overflow-y:auto; }
+.results-inner  { padding:12px 28px 44px; }
+.results-top    { padding:28px 0 24px; }
+.results-score  { font-size:56px; font-weight:300; color:var(--text); line-height:1; letter-spacing:-0.03em; margin-bottom:4px; }
+.results-score span { background:linear-gradient(90deg,var(--cyan),var(--pink)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.results-out    { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3); margin-bottom:14px; }
+.results-verdict{ font-size:20px; font-weight:400; color:var(--text); margin-bottom:6px; }
+.results-sub    { font-size:13px; color:var(--text2); line-height:1.6; }
+.stat-row  { display:flex; justify-content:space-between; margin-bottom:24px; }
+.stat      { text-align:center; }
+.stat-n    { font-size:28px; font-weight:300; color:var(--text); margin-bottom:4px; }
+.stat-l    { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; }
+
+/* ── LEADERBOARD ── */
+#leaderboard { background:var(--bg); overflow-y:auto; }
+.lb-nav     { display:flex; align-items:center; justify-content:space-between; padding:10px 28px 20px; flex-shrink:0; }
+.lb-nav-title { font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--text3); letter-spacing:0.1em; text-transform:uppercase; }
+.lb-body    { padding:0 28px 44px; }
+.lb-heading { font-size:24px; font-weight:300; color:var(--text); margin-bottom:20px; letter-spacing:-0.01em; }
+
+/* category tabs */
+.lb-tabs    { display:flex; gap:0; margin-bottom:24px; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.lb-tab     { flex:1; padding:10px 6px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text3); cursor:pointer; transition:background 0.15s,color 0.15s; letter-spacing:0.03em; border-right:1px solid var(--border); }
+.lb-tab:last-child { border-right:none; }
+.lb-tab.active { background:var(--pink); color:#000; font-weight:600; }
+.lb-tab:not(.active):active { background:rgba(255,255,255,0.04); }
+
+.lb-list    { display:flex; flex-direction:column; }
+.lb-row     { display:flex; align-items:center; gap:16px; padding:13px 0; border-bottom:1px solid var(--border); }
+.lb-row:last-child { border-bottom:none; }
+.lb-rank    { font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text3); width:22px; flex-shrink:0; }
+.lb-rank.top { color:var(--pink); font-weight:600; }
+.lb-name    { flex:1; font-size:14px; color:var(--text); }
+.lb-name.me { color:var(--cyan); }
+.lb-pts     { font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text2); }
+.lb-pts.me  { color:var(--cyan); }
+.lb-empty   { font-size:13px; color:var(--text3); padding:36px 0; text-align:center; line-height:1.8; }
+.lb-you-row { background:rgba(0,198,209,0.05); border:1px solid rgba(0,198,209,0.2); border-radius:10px; padding:14px 16px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; }
+.lb-you-label { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:3px; }
+.lb-you-score { font-size:20px; font-weight:300; color:var(--cyan); }
+.lb-you-rank  { font-family:'IBM Plex Mono',monospace; font-size:18px; color:rgba(0,198,209,0.4); }
+
+/* ── EXIT MODAL ── */
+.modal-overlay { position:absolute; inset:0; z-index:100; background:rgba(0,0,0,0.65); display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity 0.2s ease; }
+.modal-overlay.visible { opacity:1; pointer-events:all; }
+.modal-sheet { width:100%; background:var(--bg2); border-radius:20px 20px 0 0; padding:28px 28px 44px; transform:translateY(100%); transition:transform 0.28s cubic-bezier(0.4,0,0.2,1); border-top:1px solid var(--border); }
+.modal-overlay.visible .modal-sheet { transform:translateY(0); }
+.modal-title { font-size:18px; font-weight:400; color:var(--text); margin-bottom:8px; letter-spacing:-0.01em; }
+.modal-body  { font-size:13px; color:var(--text2); line-height:1.6; margin-bottom:24px; }
+.modal-btns  { display:flex; flex-direction:column; gap:10px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- HOME -->
+  <div class="screen" id="home">
+    <div class="sb"><span>9:41</span><span>●●●</span></div>
+    <div class="home-inner">
+      <div class="home-eyebrow">Mini game · Music quiz</div>
+      <div class="home-title">Test your<br><strong>music IQ</strong></div>
+      <div class="home-meta">
+        <span>10 questions</span> · choose a category<br>
+        Answer fast — speed earns more points.
+      </div>
+      <div class="home-btns">
+        <div class="btn btn-accent" onclick="goCatPick()">Start quiz</div>
+        <div class="btn btn-ghost" onclick="openLeaderboard()">Leaderboard</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY PICKER -->
+  <div class="screen hidden" id="catpick">
+    <div class="sb" style="padding:16px 28px 0;"><span>9:41</span><span>●●●</span></div>
+    <div class="catpick-inner">
+      <div class="catpick-header">
+        <div class="back" onclick="transition('catpick','home')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7L9 12" stroke="rgba(240,240,240,0.4)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="catpick-title">Choose category</div>
+      </div>
+      <div class="catpick-heading">What do you want<br>to be tested on?</div>
+      <div class="catpick-sub">Pick one — 10 questions, scored by speed.</div>
+      <div class="cat-cards" id="cat-cards">
+        <div class="cat-card" id="card-all" onclick="selectCat('all')">
+          <div class="cat-card-name">All categories</div>
+          <div class="cat-card-desc">A mix of theory, production, and ear training questions.</div>
+          <div class="cat-card-count">10 questions · mixed</div>
+        </div>
+        <div class="cat-card" id="card-theory" onclick="selectCat('theory')">
+          <div class="cat-card-name">Music Theory</div>
+          <div class="cat-card-desc">Scales, chords, intervals, progressions, and notation.</div>
+          <div class="cat-card-count">10 questions · theory only</div>
+        </div>
+        <div class="cat-card" id="card-production" onclick="selectCat('production')">
+          <div class="cat-card-name">Production</div>
+          <div class="cat-card-desc">DAWs, compression, EQ, MIDI, mixing, and recording.</div>
+          <div class="cat-card-count">10 questions · production only</div>
+        </div>
+        <div class="cat-card" id="card-ear" onclick="selectCat('ear')">
+          <div class="cat-card-name">Ear Training</div>
+          <div class="cat-card-desc">Identify intervals, chords, and audio effects by ear.</div>
+          <div class="cat-card-count">10 questions · ear training only</div>
+        </div>
+      </div>
+      <div class="catpick-cta">
+        <div class="btn btn-accent" id="start-btn" onclick="startQuiz()" style="opacity:0.35;pointer-events:none;">Select a category</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="screen hidden" id="quiz">
+    <div class="quiz-header">
+      <div class="sb" style="padding:16px 0 0;margin-bottom:14px;"><span>9:41</span><span>●●●</span></div>
+      <div class="quiz-nav">
+        <div class="back" onclick="tryExit()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7L9 12" stroke="rgba(240,240,240,0.4)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="score" id="score-display">0 pts</div>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="prog-meta">
+        <span class="prog-label" id="prog-cat">—</span>
+        <span class="prog-label" id="prog-num">1 / 10</span>
+      </div>
+      <div class="timer-row">
+        <div class="timer-track"><div class="timer-bar" id="timer-bar" style="width:100%;background:var(--accent);"></div></div>
+        <span class="timer-val" id="timer-val">15s</span>
+      </div>
+    </div>
+    <div class="quiz-body" id="quiz-body"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen hidden" id="results">
+    <div class="sb" style="padding:16px 28px 0;"><span>9:41</span><span>●●●</span></div>
+    <div class="results-inner" id="results-content"></div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="screen hidden" id="leaderboard">
+    <div class="sb" style="padding:16px 28px 0;"><span>9:41</span><span>●●●</span></div>
+    <div class="lb-nav">
+      <div class="back" id="lb-back-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7L9 12" stroke="rgba(240,240,240,0.4)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="lb-nav-title">Leaderboard</div>
+      <div style="width:32px;"></div>
+    </div>
+    <div class="lb-body">
+      <div class="lb-heading">Top scores</div>
+      <div class="lb-tabs">
+        <div class="lb-tab active" id="tab-all"        onclick="switchTab('all')">All</div>
+        <div class="lb-tab"        id="tab-theory"     onclick="switchTab('theory')">Theory</div>
+        <div class="lb-tab"        id="tab-production" onclick="switchTab('production')">Production</div>
+        <div class="lb-tab"        id="tab-ear"        onclick="switchTab('ear')">Ear</div>
+      </div>
+      <div id="lb-list-wrap"></div>
+    </div>
+  </div>
+
+  <!-- EXIT CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="exit-modal" onclick="handleModalOverlayClick(event)">
+    <div class="modal-sheet">
+      <div class="modal-title">Quit the quiz?</div>
+      <div class="modal-body">You are on question <span id="modal-q-num">—</span>. Your progress and score will not be saved.</div>
+      <div class="modal-btns">
+        <div class="btn btn-ghost" style="color:var(--danger);border-color:rgba(255,59,59,0.3);font-size:13px;padding:15px;" onclick="confirmExit()">Yes, quit</div>
+        <div class="btn btn-accent" style="font-size:13px;padding:15px;" onclick="dismissModal()">Keep playing</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// ── Question pool ──
+const POOL = {
+  theory: [
+    { text:"What does a sharp do to a note?", options:["Lowers it by a half step","Raises it by a half step","Cancels a previous accidental","Lowers it by a whole step"], correct:1, explanation:"A sharp raises a note by one half step — the smallest interval in Western music.", audio:false },
+    { text:"What does BPM stand for?", options:["Beat Production Mode","Bars Per Measure","Beats Per Minute","Bass Pitch Modulation"], correct:2, explanation:"BPM stands for Beats Per Minute — the standard way to measure tempo.", audio:false },
+    { text:"How many notes are in a standard major scale?", options:["5","6","7","8"], correct:2, explanation:"A major scale has 7 distinct notes before the octave.", audio:false },
+    { text:"What does a flat do to a note?", options:["Lowers it by a half step","Raises it by a half step","Cancels a previous accidental","Lowers it by a whole step"], correct:0, explanation:"A flat lowers a note by one half step — the opposite of a sharp.", audio:false },
+    { text:"Which scale has no sharps or flats?", options:["G major","F major","C major","D major"], correct:2, explanation:"C major is the only major scale with no sharps or flats.", audio:false },
+    { text:"Which is the downbeat in a 4/4 bar?", options:["Beat 1","Beat 2","Beat 3","Beat 4"], correct:0, explanation:"Beat 1 is the downbeat — the strongest beat in a bar.", audio:false },
+    { text:"Which chord progression is most common in pop?", options:["I–V–vi–IV","ii–V–I–IV","I–IV–V–I","vi–IV–I–V"], correct:0, explanation:"I–V–vi–IV is the backbone of countless pop hits.", audio:false },
+    { text:"What is the root of a chord?", options:["The highest note","The note the chord is named after","The middle note","The bass line"], correct:1, explanation:"The root is the note a chord is named after — in C major, C is the root.", audio:false },
+    { text:"What is the relative major of A minor?", options:["E major","G major","F major","C major"], correct:3, explanation:"A minor and C major share the same key signature — C major is its relative major.", audio:false },
+    { text:"What extra note does a G7 chord add to G major?", options:["F","A","D","C"], correct:0, explanation:"G7 adds an F natural to the G major triad, creating the dominant 7th sound.", audio:false },
+    { text:"How many semitones are in an octave?", options:["8","10","12","14"], correct:2, explanation:"An octave spans 12 semitones — from one note to the next occurrence of the same note.", audio:false },
+    { text:"Which interval is known as the 'devil's interval'?", options:["Perfect 4th","Diminished 5th","Major 7th","Minor 2nd"], correct:1, explanation:"The tritone (diminished 5th) was historically called diabolus in musica for its dissonant sound.", audio:false },
+  ],
+  production: [
+    { text:"What does MIDI stand for?", options:["Musical Instrument Digital Interface","Multi-Track Instrument Data Input","Main Instrument Digital Integration","Music Interval Dynamic Information"], correct:0, explanation:"MIDI lets instruments and computers communicate musical data.", audio:false },
+    { text:"What does sidechain compression do?", options:["Makes the whole track quieter","Changes the key","Uses one track's volume to compress another","Makes the whole track louder"], correct:2, explanation:"Sidechain compression ducks one track based on another — the classic kick pump.", audio:false },
+    { text:"What do pop filters minimise?", options:["Low-end rumble","Sibilance","Plosives (P and B sounds)","Room echo"], correct:2, explanation:"Pop filters diffuse the burst of air from plosive consonants before they hit the mic.", audio:false },
+    { text:"What does quantising do in a DAW?", options:["Changes pitch to match the key","Snaps notes to the grid","Adds reverb","Records over the previous take"], correct:1, explanation:"Quantising snaps MIDI notes to the nearest grid position, tightening timing.", audio:false },
+    { text:"In a compressor, what does Threshold do?", options:["Sets the output volume","Sets the level where compression begins","Sets compression speed","Adds harmonics"], correct:1, explanation:"The threshold sets the level above which the compressor starts reducing gain.", audio:false },
+    { text:"Most common sampling rate for audio CDs?", options:["48 kHz","44.1 kHz","96 kHz","22.05 kHz"], correct:1, explanation:"44.1 kHz is the CD standard — captures up to ~22 kHz, just above human hearing.", audio:false },
+    { text:"What does double tracking vocals achieve?", options:["Adds delay","Adds chorus","Records the same part twice for thickness","Copies and pastes the track"], correct:2, explanation:"Double tracking records two takes — tiny differences create a naturally thick, wide sound.", audio:false },
+    { text:"What is a notable characteristic of a sine wave?", options:["Lots of harmonics","No harmonics","Heavy distortion","A noisy texture"], correct:1, explanation:"A pure sine wave has no harmonics — it is the simplest, smoothest waveform.", audio:false },
+    { text:"What does latency refer to in a DAW setup?", options:["Time to open a plugin","Delay between input and hearing sound","Length of the audio file","Buffer size readout"], correct:1, explanation:"Latency is the delay between playing a note and hearing it — affected by buffer size.", audio:false },
+    { text:"Which cable type connects a guitar to an amp?", options:["XLR","RCA","¼\" TS (Tip Sleeve)","USB-C"], correct:2, explanation:"A standard ¼\" TS (instrument) cable is used to connect a guitar to an amp.", audio:false },
+    { text:"What does 'bussing' your drums mean?", options:["Route all drum tracks to a single stereo track","Separate kick from snare","Load the drum kit onto transport","Delete the drum tracks"], correct:0, explanation:"Bussing routes individual drum tracks to a group track for unified processing.", audio:false },
+    { text:"What types of sounds do de-essers target?", options:["Harsh high-frequency sibilance","Low-end thumps","Mid-range honk","Background noise"], correct:0, explanation:"De-essers reduce harsh 'S' and 'SH' frequencies — sibilance — without dulling the vocal.", audio:false },
+  ],
+  ear: [
+    { text:"What is the interval between these 2 notes?", options:["Minor 2nd","Perfect 5th","Diminished 5th","Minor 6th"], correct:1, explanation:"C to G spans 7 half steps — a Perfect 5th, one of the most consonant intervals.", audio:true, audioLabel:"C → G", freq1:261.63, freq2:392.00 },
+    { text:"What is the lowest note in this chord?", options:["G","E","C","A"], correct:2, explanation:"The C major triad (C–E–G) in root position has C as its lowest note.", audio:true, audioLabel:"C major triad", freq1:261.63, freq2:329.63, freq3:392.00 },
+    { text:"What effect was added to the second sound?", options:["Distortion","Pitch correction","Delay","Reverb"], correct:3, explanation:"Reverb adds the sound of a space — making a dry signal sound like it's in a room or hall.", audio:true, audioLabel:"Dry → Wet signal", freq1:440, freq2:440 },
+    { text:"Which interval sounds most tense / dissonant?", options:["Perfect 5th","Major 3rd","Minor 2nd","Perfect 4th"], correct:2, explanation:"A minor 2nd (half step) is the most dissonant common interval — think of a horror film sting.", audio:false },
+    { text:"A melody that moves by small adjacent steps is called:", options:["Disjunct motion","Conjunct motion","Leaping motion","Chromatic leap"], correct:1, explanation:"Conjunct (stepwise) motion moves by small intervals — whole or half steps.", audio:false },
+    { text:"What is the interval between these 2 notes?", options:["Major 2nd","Minor 3rd","Major 3rd","Perfect 4th"], correct:2, explanation:"C to E spans 4 half steps — that's a Major 3rd, the defining interval of a major chord.", audio:true, audioLabel:"C → E", freq1:261.63, freq2:329.63 },
+    { text:"How many beats does a dotted quarter note last in 4/4 time?", options:["1","1.5","2","2.5"], correct:1, explanation:"A dot adds half the note's value — a quarter note is 1 beat, so dotted = 1.5 beats.", audio:false },
+    { text:"Which term describes gradually getting louder?", options:["Diminuendo","Sforzando","Crescendo","Rallentando"], correct:2, explanation:"Crescendo (often marked with a hairpin <) means to gradually increase in volume.", audio:false },
+    { text:"What is the interval between these 2 notes?", options:["Minor 6th","Major 6th","Minor 7th","Major 7th"], correct:1, explanation:"C to A spans 9 half steps — a Major 6th, which has a warm, open sound.", audio:true, audioLabel:"C → A", freq1:261.63, freq2:440.00 },
+    { text:"When a note is played staccato, it should be performed:", options:["Smoothly and connected","Short and detached","Very loudly","Very slowly"], correct:1, explanation:"Staccato (marked with a dot above/below the note) means to play short and detached, roughly half the note's written duration.", audio:false },
+  ],
+};
+
+// ── Leaderboard data per category (seeded) ──
+const LB = {
+  all:        [ {name:"Jordan K.",score:1640},{name:"Mia T.",score:1520},{name:"Luca R.",score:1380},{name:"Sofia B.",score:1200},{name:"Aiden W.",score:990} ],
+  theory:     [ {name:"Priya M.",score:1710},{name:"Noah C.",score:1580},{name:"Sam L.",score:1420},{name:"Hana R.",score:1300},{name:"Wei X.",score:1150} ],
+  production: [ {name:"Carlos D.",score:1800},{name:"Aria T.",score:1650},{name:"Jake M.",score:1490},{name:"Lily S.",score:1310},{name:"Omar F.",score:1100} ],
+  ear:        [ {name:"Yuki A.",score:1700},{name:"Ines B.",score:1560},{name:"Theo P.",score:1400},{name:"Zara K.",score:1220},{name:"Felix N.",score:1060} ],
+};
+
+// ── State ──
+let selectedCat = null;
+let QUESTIONS = [];
+let current=0, score=0, correctCount=0;
+let timerInterval=null, timeLeft=15, answered=false;
+let playCount=0, audioCtx=null;
+let activeLbTab = 'all';
+let lbReturnScreen = 'home';
+
+// ── Helpers ──
+function shuffle(a){const r=[...a];for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];}return r;}
+
+function pickQuestions(cat) {
+  if(cat==='all') {
+    const t=shuffle(POOL.theory).slice(0,4);
+    const p=shuffle(POOL.production).slice(0,4);
+    const e=shuffle(POOL.ear).slice(0,2);
+    QUESTIONS = shuffle([...t,...p,...e]);
+  } else {
+    QUESTIONS = shuffle(POOL[cat]).slice(0,10);
+  }
+}
+
+// ── Category picker ──
+function goCatPick() {
+  selectedCat = null;
+  ['all','theory','production','ear'].forEach(c=>{
+    document.getElementById('card-'+c).classList.remove('selected');
+  });
+  const btn=document.getElementById('start-btn');
+  btn.textContent='Select a category'; btn.style.opacity='0.35'; btn.style.pointerEvents='none';
+  transition('home','catpick');
+}
+
+function selectCat(cat) {
+  selectedCat = cat;
+  ['all','theory','production','ear'].forEach(c=>{
+    document.getElementById('card-'+c).classList.toggle('selected', c===cat);
+  });
+  const btn=document.getElementById('start-btn');
+  const labels={all:'Start — All categories',theory:'Start — Music Theory',production:'Start — Production',ear:'Start — Ear Training'};
+  btn.textContent=labels[cat]; btn.style.opacity='1'; btn.style.pointerEvents='auto';
+}
+
+// ── Audio ──
+function getACtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function playNote(freq,t,ctx,g,dur){dur=dur||1.2;const o=ctx.createOscillator(),e=ctx.createGain();o.connect(e);e.connect(g);o.type='triangle';o.frequency.value=freq;e.gain.setValueAtTime(0,t);e.gain.linearRampToValueAtTime(0.4,t+0.02);e.gain.exponentialRampToValueAtTime(0.001,t+dur);o.start(t);o.stop(t+dur+0.1);}
+function playAudio(q){
+  try{
+    const ctx=getACtx(),g=ctx.createGain();g.gain.value=0.7;g.connect(ctx.destination);
+    const now=ctx.currentTime;
+    playNote(q.freq1,now,ctx,g);
+    if(q.freq2) playNote(q.freq2,now+(q.freq3?0:0.6),ctx,g);
+    if(q.freq3) playNote(q.freq3,now,ctx,g);
+    playCount++;
+    const rc=document.getElementById('rc');if(rc)rc.textContent='Played '+playCount+'×';
+    animateWave();
+  }catch(e){}
+}
+function animateWave(){const bars=document.querySelectorAll('.wbar');let i=0;const iv=setInterval(()=>{if(i<bars.length){bars[i].classList.replace('unplayed','played');i++;}else clearInterval(iv);},55);}
+
+// ── Quiz render ──
+function renderQuestion(){
+  answered=false;playCount=0;
+  const q=QUESTIONS[current];
+  document.getElementById('score-display').textContent=score+' pts';
+  const catLabel = selectedCat==='all'?q.category||'Mixed':({all:'All',theory:'Music Theory',production:'Production',ear:'Ear Training'}[selectedCat]);
+  document.getElementById('prog-cat').textContent=catLabel+' · '+(q.difficulty||'Mixed');
+  document.getElementById('prog-num').textContent=(current+1)+' / '+QUESTIONS.length;
+  document.getElementById('prog-fill').style.width=((current/QUESTIONS.length)*100)+'%';
+
+  const audioHTML=q.audio?`<div class="audio-block">
+    <div class="play-btn" onclick="playAudio(QUESTIONS[${current}])"><svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M1 1L9 6L1 11V1Z" fill="rgba(240,240,240,0.55)"/></svg></div>
+    <div class="waveform">${Array.from({length:22},(_,i)=>{const h=[6,11,18,24,16,10,20,14,22,18,8,16,20,12,24,14,8,18,10,16,22,12][i]||12;return`<div class="wbar unplayed" style="height:${h}px;width:3px;"></div>`;}).join('')}</div>
+    <div><div class="audio-meta">${q.audioLabel}</div><span class="replay" id="rc" onclick="playAudio(QUESTIONS[${current}])">Tap to play</span></div>
+  </div>`:'';
+
+  const opts=q.options.map((o,i)=>`<div class="opt" id="opt-${i}" onclick="selectAnswer(${i})"><div class="opt-key">${['A','B','C','D'][i]}</div><span class="opt-text">${o}</span></div>`).join('');
+  document.getElementById('quiz-body').innerHTML=`<div class="fade-up"><div class="q-text">${q.text}${audioHTML}</div><div class="options">${opts}</div><div id="fz"></div></div>`;
+  startTimer();
+}
+
+function startTimer(){clearInterval(timerInterval);timeLeft=15;updateTimer();timerInterval=setInterval(()=>{timeLeft--;updateTimer();if(timeLeft<=0){clearInterval(timerInterval);if(!answered)timeUp();}},1000);}
+function updateTimer(){const bar=document.getElementById('timer-bar'),val=document.getElementById('timer-val');if(!bar)return;bar.style.width=(timeLeft/15*100)+'%';bar.style.background=timeLeft>5?'var(--cyan)':'var(--danger)';val.textContent=timeLeft+'s';val.style.color=timeLeft<=3?'var(--danger)':'var(--text3)';}
+
+function applyStates(sel,cor){
+  for(let i=0;i<QUESTIONS[current].options.length;i++){
+    const opt=document.getElementById('opt-'+i);opt.classList.add('answered');
+    if(i===sel&&i===cor){opt.className='opt correct-sel answered';const ic=document.createElement('span');ic.className='opt-icon';ic.textContent='✓';opt.appendChild(ic);}
+    else if(i===sel&&i!==cor){opt.className='opt wrong-sel answered';const ic=document.createElement('span');ic.className='opt-icon';ic.textContent='✕';opt.appendChild(ic);}
+    else if(i===cor&&sel!==-1){opt.className='opt correct-rev answered';}
+    else{opt.className='opt dimmed answered';}
+  }
+}
+
+function timeUp(){answered=true;applyStates(-1,QUESTIONS[current].correct);showFeedback(false,QUESTIONS[current],-1,0);}
+
+function selectAnswer(idx){
+  if(answered)return;answered=true;clearInterval(timerInterval);
+  const q=QUESTIONS[current],ok=idx===q.correct;let pts=0;
+  if(ok){pts=50+Math.round((timeLeft/15)*150);score+=pts;correctCount++;}
+  document.getElementById('score-display').textContent=score+' pts';
+  applyStates(idx,q.correct);showFeedback(ok,q,idx,pts);
+}
+
+function showFeedback(ok,q,idx,pts){
+  const fz=document.getElementById('fz');if(!fz)return;
+  if(ok){
+    const speed=timeLeft>=12?'Lightning fast':timeLeft>=8?'Quick':'Good';
+    fz.innerHTML=`<div class="feedback fb-correct fade-up"><div class="fb-title fb-title-c">Correct · +${pts} pts <span style="font-size:11px;font-weight:400;opacity:0.6;margin-left:4px;">${speed}</span></div><div class="fb-body">${q.explanation}</div></div><div class="btn btn-accent fade-up" onclick="nextQuestion()" style="animation-delay:0.08s;font-size:13px;padding:15px 20px;">${current<QUESTIONS.length-1?'Next question':'See results'}</div>`;
+  } else {
+    const timedOut=idx===-1;
+    fz.innerHTML=`<div class="feedback fb-wrong fade-up"><div class="fb-title fb-title-w">${timedOut?"Time's up":"Wrong answer"}</div><div class="fb-body">${q.explanation}</div><div class="fb-reveal">Correct: <strong>${['A','B','C','D'][q.correct]} — ${q.options[q.correct]}</strong></div></div><div class="btn btn-ghost fade-up" onclick="nextQuestion()" style="animation-delay:0.08s;font-size:13px;padding:15px 20px;">${current<QUESTIONS.length-1?'Continue':'See results'}</div>`;
+  }
+  setTimeout(()=>{document.getElementById('quiz').scrollTop=9999;},80);
+}
+
+function nextQuestion(){current++;if(current>=QUESTIONS.length){showResults();}else{document.getElementById('quiz').scrollTop=0;renderQuestion();}}
+
+// ── Results ──
+function showResults(){
+  clearInterval(timerInterval);
+  // Add to leaderboard
+  const catKey = selectedCat||'all';
+  const existing = LB[catKey].findIndex(e=>e.isMe);
+  if(existing>-1) LB[catKey].splice(existing,1);
+  LB[catKey].push({name:'You', score, isMe:true});
+  LB[catKey].sort((a,b)=>b.score-a.score);
+
+  transition('quiz','results');
+  const maxScore=QUESTIONS.length*200;
+  const pct=Math.round((correctCount/QUESTIONS.length)*100);
+  const verdict=pct>=80?'Impressive.':pct>=50?'Solid effort.':'Room to grow.';
+  const sub=pct>=80?'You clearly know your music.':pct>=50?'Good foundation — keep exploring.':'Every listen teaches you something.';
+  const rank=LB[catKey].findIndex(e=>e.isMe)+1;
+  const catLabels={all:'All categories',theory:'Music Theory',production:'Production',ear:'Ear Training'};
+
+  document.getElementById('results-content').innerHTML=`
+    <div class="results-top fade-up">
+      <div class="results-score"><span>${score}</span></div>
+      <div class="results-out">out of ${maxScore} pts · ${catLabels[catKey]}</div>
+      <div class="results-verdict">${verdict}</div>
+      <div class="results-sub">${sub}</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat-row fade-up">
+      <div class="stat"><div class="stat-n">${correctCount}</div><div class="stat-l">Correct</div></div>
+      <div class="stat"><div class="stat-n">${QUESTIONS.length-correctCount}</div><div class="stat-l">Missed</div></div>
+      <div class="stat"><div class="stat-n">#${rank}</div><div class="stat-l">Rank</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="btn-row fade-up" style="margin-bottom:10px;">
+      <div class="btn btn-ghost" style="flex:1;font-size:13px;padding:15px;" onclick="openLeaderboard('results')">Leaderboard</div>
+      <div class="btn btn-accent" style="flex:2;font-size:13px;padding:15px;" onclick="restartSameCat()">Play again</div>
+    </div>
+    <div class="btn btn-ghost fade-up" style="font-size:13px;padding:15px;width:100%;" onclick="goCatPickFromResults()">Change category</div>
+    <div style="height:10px;"></div>
+    <div class="btn btn-ghost fade-up" style="font-size:13px;padding:15px;width:100%;margin-top:2px;" onclick="goHome()">Home</div>`;
+}
+
+// ── Leaderboard ──
+function openLeaderboard(from){
+  lbReturnScreen = from||'home';
+  activeLbTab = selectedCat||'all';
+  renderLbTab(activeLbTab);
+  // sync active tab UI
+  ['all','theory','production','ear'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===activeLbTab);
+  });
+  document.getElementById('lb-back-btn').onclick = closeLeaderboard;
+
+  // slide up
+  const lb=document.getElementById('leaderboard');
+  lb.classList.remove('hidden');
+  lb.style.transform='translateY(100%)'; lb.style.opacity='0';
+  lb.style.transition='transform 0.36s cubic-bezier(0.4,0,0.2,1),opacity 0.36s';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{lb.style.transform='translateY(0)';lb.style.opacity='1';}));
+}
+function closeLeaderboard(){
+  const lb=document.getElementById('leaderboard');
+  lb.style.transform='translateY(100%)'; lb.style.opacity='0';
+  setTimeout(()=>{lb.classList.add('hidden');lb.style.transform='';lb.style.opacity='';lb.style.transition='';},360);
+}
+function switchTab(cat){
+  activeLbTab=cat;
+  ['all','theory','production','ear'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===cat);
+  });
+  renderLbTab(cat);
+}
+function renderLbTab(cat){
+  const data=LB[cat];
+  const myIdx=data.findIndex(e=>e.isMe);
+  let youHtml='';
+  if(myIdx>-1){
+    youHtml=`<div class="lb-you-row fade-up">
+      <div><div class="lb-you-label">Your score</div><div class="lb-you-score">${data[myIdx].score} pts</div></div>
+      <div class="lb-you-rank">#${myIdx+1}</div>
+    </div>`;
+  }
+  const rows=data.map((e,i)=>`<div class="lb-row">
+    <div class="lb-rank${i<3?' top':''}">${i+1}</div>
+    <div class="lb-name${e.isMe?' me':''}">${e.isMe?'You':e.name}</div>
+    <div class="lb-pts${e.isMe?' me':''}">${e.score}</div>
+  </div>`).join('');
+  document.getElementById('lb-list-wrap').innerHTML=youHtml+`<div class="lb-list fade-up">${rows||'<div class="lb-empty">No scores yet.<br>Be the first to play.</div>'}</div>`;
+}
+
+// ── Navigation ──
+function transition(from,to){
+  document.getElementById(from).classList.add('exit');
+  document.getElementById(to).classList.remove('hidden');
+  setTimeout(()=>{document.getElementById(from).classList.add('hidden');document.getElementById(from).classList.remove('exit');},350);
+}
+function startQuiz(){
+  if(!selectedCat)return;
+  current=0;score=0;correctCount=0;
+  pickQuestions(selectedCat);
+  transition('catpick','quiz');
+  setTimeout(renderQuestion,50);
+}
+function restartSameCat(){
+  const idx=LB[selectedCat||'all'].findIndex(e=>e.isMe);
+  if(idx>-1) LB[selectedCat||'all'].splice(idx,1);
+  current=0;score=0;correctCount=0;
+  pickQuestions(selectedCat);
+  document.getElementById('results').classList.add('exit');
+  document.getElementById('quiz').classList.remove('hidden');
+  document.getElementById('quiz').scrollTop=0;
+  setTimeout(()=>{document.getElementById('results').classList.add('hidden');document.getElementById('results').classList.remove('exit');},350);
+  setTimeout(renderQuestion,50);
+}
+function goCatPickFromResults(){
+  transition('results','catpick');
+  selectedCat=null;
+  ['all','theory','production','ear'].forEach(c=>document.getElementById('card-'+c).classList.remove('selected'));
+  const btn=document.getElementById('start-btn');
+  btn.textContent='Select a category';btn.style.opacity='0.35';btn.style.pointerEvents='none';
+}
+function goHome(){
+  clearInterval(timerInterval);
+  const active=['quiz','results','catpick'].find(id=>!document.getElementById(id).classList.contains('hidden'));
+  if(active)transition(active,'home');
+}
+
+// ── Exit confirmation modal ──
+function tryExit(){
+  // Only show modal when a quiz is actively in progress (not on results/catpick)
+  const quizActive = !document.getElementById('quiz').classList.contains('hidden');
+  if(quizActive && current < QUESTIONS.length){
+    document.getElementById('modal-q-num').textContent = (current+1)+' of '+QUESTIONS.length;
+    const modal = document.getElementById('exit-modal');
+    modal.classList.add('visible');
+    // pause timer
+    clearInterval(timerInterval);
+  } else {
+    goHome();
+  }
+}
+function dismissModal(){
+  document.getElementById('exit-modal').classList.remove('visible');
+  // resume timer if question not yet answered
+  if(!answered) startTimer();
+}
+function confirmExit(){
+  document.getElementById('exit-modal').classList.remove('visible');
+  clearInterval(timerInterval);
+  transition('quiz','home');
+}
+function handleModalOverlayClick(e){
+  if(e.target === document.getElementById('exit-modal')) dismissModal();
+}
+</script>
+</body>
+</html>
